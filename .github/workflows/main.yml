@@ -1,0 +1,42 @@
+name: Daily Digest
+
+on:
+  schedule:
+    - cron: '0 18 * * *' # Runs at 18:00 (6 PM) UTC daily
+  workflow_dispatch: 
+
+jobs:
+  run-daily-digest:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout the repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.12
+
+      - name: Install dependencies
+        run: |
+          pip install praw openai python-dotenv
+
+      - name: Export environment variables
+        run: |
+          echo "CLIENT_ID=${{ secrets.CLIENT_ID }}" >> .env
+          echo "CLIENT_SECRET=${{ secrets.CLIENT_SECRET }}" >> .env
+          echo "USER_AGENT=${{ secrets.USER_AGENT }}" >> .env
+          echo "LLM_API_KEY=${{ secrets.LLM_API_KEY }}" >> .env
+          echo "LOOPS_API_KEY=${{ secrets.LOOPS_API_KEY }}" >> .env
+          echo "LOOPS_TRANSACTIONAL_ID=${{ secrets.LOOPS_TRANSACTIONAL_ID }}" >> .env
+
+      - name: Run send_digest.py
+        env:
+          CLIENT_ID: ${{ secrets.CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+          USER_AGENT: ${{ secrets.USER_AGENT }}
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          LOOPS_API_KEY: ${{ secrets.LOOPS_API_KEY }}
+          LOOPS_TRANSACTIONAL_ID: ${{ secrets.LOOPS_TRANSACTIONAL_ID }}
+        run: python send_digest.py
