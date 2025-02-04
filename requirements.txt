@@ -1,0 +1,5 @@
+openai
+sendgrid
+python-dotenv
+praw
+beautifulsoup4

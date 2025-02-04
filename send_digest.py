@@ -1,9 +1,13 @@
-from openai import OpenAI
 import praw
 from datetime import datetime as dt
 from dotenv import load_dotenv
 import requests
 import os
+from bs4 import BeautifulSoup
+import re
+
+from services.mailers import send_daily_newsletter
+from services.llm import create_content
 
 def pull_posts():
     reddit = praw.Reddit(
@@ -19,7 +23,7 @@ def pull_posts():
 
 def build_prompt(posts, date):
 
-    context_prompt = "You are a top tech and AI email newsletter writer. You will copy the styles of other popular email newsletters like Morning Brew, Proof of Intel, e27 Daily Digest. You will be given a list of top posts of the day from the subreddit r/LocalLLaMa, a subreddit dedicated to news about new LLM and AI advancements. You will read and understand all the top posts from the day and return a quick summary headline and subheader that encompasses the entire day's stories. Then build 3-5 stories that dive deeper into each topic that is brought up. Focus on providing a factual and unbiased point of view and try to mimic the voice of a news reporter. Style the email output using gmail-friendly HTML. Do not put it within a code block (```html ```).\n\nHere is the data for today:\n\n"
+    context_prompt = "You are a top tech and AI email newsletter writer. You will copy the styles of other popular email newsletters like Morning Brew, Proof of Intel, e27 Daily Digest. You will be given a list of top posts of the day from the subreddit r/LocalLLaMa, a subreddit dedicated to news about new LLM and AI advancements. You will read and understand all the top posts from the day and return a quick summary headline and subheader that encompasses the entire day's stories. Then build 3-5 stories that dive deeper into each topic that is brought up. Focus on providing a factual and unbiased point of view and try to mimic the voice of a news reporter. The output should be formatted with html. Style the email output using gmail-friendly HTML. Do not put it within a code block (```html ```).\n\nHere is the data for today:\n\n"
 
     prompt = f"Top Posts on r/LocalLLaMa for {date}\n"
     prompt += "Posts are sorted in descending order\n"
@@ -35,19 +39,7 @@ def build_prompt(posts, date):
 
     return full_prompt
 
-def create_content(prompt):
-    #client = OpenAI(api_key=DEEPSEEK_API_KEY, base_url="https://api.deepseek.com")
-    client = OpenAI(api_key=os.getenv("LLM_API_KEY"), base_url=os.getenv("BASE_URL", "https://api.openai.com/v1"))
 
-    response = client.chat.completions.create(
-        model="o1-preview",
-        messages=[
-                {"role": "user", "content": prompt},
-            ],
-        stream=False
-    )
-
-    return response.choices[0].message.content
 
 def send_email(content, date):
     url = "https://app.loops.so/api/v1/transactional"
@@ -70,6 +62,44 @@ def send_email(content, date):
 
     print(response)
 
+def get_subject(html_content, date):
+    soup = BeautifulSoup(html_content, "html.parser")
+
+    h1_tag = soup.find("h1")
+
+    if h1_tag:
+        return h1_tag.get_text()
+    else:
+        return f"Gab's Daily AI Digest - {date}"
+
+    return None
+
+def get_body(html_content):
+    soup = BeautifulSoup(html_content, "html.parser")
+
+    body_tag = soup.find("body")
+
+    if body_tag:
+        return body_tag.get_text()
+    else:
+        return html_content
+
+    return None
+
+def remove_code_fences(text):
+    """
+    Finds ```<lang> ... ``` blocks and replaces them
+    with just the content inside (strips backticks and optional lang).
+    """
+    # Regex explanation:
+    #   ```      matches the opening triple backticks
+    #   [a-zA-Z]*  optionally capture a language label (like 'html')
+    #   (.*?)    capture everything (non-greedy) until
+    #   ```      the closing triple backticks
+    # DOTALL so '.' matches newlines as well
+    pattern = r"```[a-zA-Z]*\n(.*?)\n```"
+    return re.sub(pattern, r"\1", text, flags=re.DOTALL)
+
 def main():
     load_dotenv()
 
@@ -79,13 +109,22 @@ def main():
 
     prompt = build_prompt(posts, date)
 
+    body_content = create_content(prompt)
+    print("RAW")
+    print(body_content)
+    print("----------------------------")
+    body_content = remove_code_fences(body_content)
+    #body_content = get_body(body_content)
+
+    content = {}
     print("Building content")
-    content = create_content(prompt)
+    content["body"] = body_content
+    content["subject"] = get_subject(content["body"], date)
     print(content)
 
     print("Sending emails")
-    send_email(content, date)
+    send_daily_newsletter(content)
 
-    print('finished')
+    print('Finished')
 
 main()
