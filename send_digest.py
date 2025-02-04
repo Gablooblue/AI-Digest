@@ -1,25 +1,14 @@
-import praw
 from datetime import datetime as dt
 from dotenv import load_dotenv
-import requests
-import os
 from bs4 import BeautifulSoup
 import re
+import logging
 
 from services.mailers import send_daily_newsletter
 from services.llm import create_content
+from services.reddit import pull_posts
 
-def pull_posts():
-    reddit = praw.Reddit(
-            client_id=os.getenv("CLIENT_ID"),
-            client_secret=os.getenv("CLIENT_SECRET"),
-            user_agent=os.getenv("USER_AGENT")
-            )
-
-    posts = reddit.subreddit("LocalLLaMA").top(limit=100, time_filter="day")
-    filtered_posts = [p for p in posts if not p.stickied and p.selftext != "" and p.score > 30]
-
-    return filtered_posts
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 def build_prompt(posts, date):
 
@@ -38,29 +27,6 @@ def build_prompt(posts, date):
     full_prompt = context_prompt + prompt
 
     return full_prompt
-
-
-
-def send_email(content, date):
-    url = "https://app.loops.so/api/v1/transactional"
-
-    payload = {
-        "email": "gabrielhenry.lopez@gmail.com",
-        "transactionalId": os.getenv('LOOPS_TRANSACTIONAL_ID'),
-        "addToAudience": True,
-        "dataVariables": {
-            "content": content,
-            "date": date
-        },
-    }
-    headers = {
-        "Authorization": f"Bearer {os.getenv('LOOPS_API_KEY')}",
-        "Content-Type": "application/json"
-    }
-
-    response = requests.request("POST", url, json=payload, headers=headers)
-
-    print(response)
 
 def get_subject(html_content, date):
     soup = BeautifulSoup(html_content, "html.parser")
@@ -110,21 +76,18 @@ def main():
     prompt = build_prompt(posts, date)
 
     body_content = create_content(prompt)
-    print("RAW")
-    print(body_content)
-    print("----------------------------")
     body_content = remove_code_fences(body_content)
     #body_content = get_body(body_content)
 
     content = {}
-    print("Building content")
+    logging.info("Building content")
     content["body"] = body_content
     content["subject"] = get_subject(content["body"], date)
-    print(content)
+    logging.info(content)
 
-    print("Sending emails")
+    logging.info("Sending emails")
     send_daily_newsletter(content)
 
-    print('Finished')
+    logging.info('Finished')
 
 main()

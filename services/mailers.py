@@ -1,9 +1,10 @@
 import os
-import requests
 import sendgrid
 import json
+import logging
 from sendgrid.helpers.mail import Mail, Email, To
 
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 def fetch_subscribers_per_page(list_id=None, page_size=1000, page_token=None):
     sg = sendgrid.SendGridAPIClient(api_key=os.getenv("SENDGRID_API_KEY"))
@@ -25,7 +26,7 @@ def fetch_subscribers_per_page(list_id=None, page_size=1000, page_token=None):
         contacts = data.get("result", [])
         return data, contacts
     else:
-        print(f"Failed to fetch contacts. Status: {response.status_code}, Body: {response.body}")
+        logging.error(f"Failed to fetch contacts. Status: {response.status_code}, Body: {response.body}")
         return None, []
 
 def fetch_all_subscribers(list_id=None):
@@ -65,4 +66,4 @@ def send_daily_newsletter(content):
             html_content=content["body"],
         )
         response = sg.send(message)
-        print(f"Sent to {email}, status code: {response.status_code}")
+        logging.info(f"Sent to {email}, status code: {response.status_code}")
