@@ -20,7 +20,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install praw openai python-dotenv
+          pip install -r requirements.txt
 
       - name: Export environment variables
         run: |
@@ -28,8 +28,14 @@ jobs:
           echo "CLIENT_SECRET=${{ secrets.CLIENT_SECRET }}" >> .env
           echo "USER_AGENT=${{ secrets.USER_AGENT }}" >> .env
           echo "LLM_API_KEY=${{ secrets.LLM_API_KEY }}" >> .env
+          echo "SECONDARY_LLM_API_KEY=${{ secrets.SECONDARY_LLM_API_KEY }}" >> .env
+          echo "BASE_URL=${{ secrets.BASE_URL }}" >> .env
           echo "LOOPS_API_KEY=${{ secrets.LOOPS_API_KEY }}" >> .env
           echo "LOOPS_TRANSACTIONAL_ID=${{ secrets.LOOPS_TRANSACTIONAL_ID }}" >> .env
+          echo "SENDGRID_API_KEY=${{ secrets.SENDGRID_API_KEY }}" >> .env
+          echo "MAILER_LIST_ID=${{ secrets.MAILER_LIST_ID }}" >> .env
+          echo "MAILER_FROM_EMAIL=${{ secrets.MAILER_FROM_EMAIL }}" >> .env
+          echo "LLM_MODEL=${{ secrets.LLM_MODEL }}" >> .env
 
       - name: Run send_digest.py
         env:
@@ -37,6 +43,12 @@ jobs:
           CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
           USER_AGENT: ${{ secrets.USER_AGENT }}
           LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          SECONDARY_LLM_API_KEY: ${{ secrets.SECONDARY_LLM_API_KEY }}
+          BASE_URL: ${{ secrets.BASE_URL }}
           LOOPS_API_KEY: ${{ secrets.LOOPS_API_KEY }}
           LOOPS_TRANSACTIONAL_ID: ${{ secrets.LOOPS_TRANSACTIONAL_ID }}
+          SENDGRID_API_KEY: ${{ secrets.SENDGRID_API_KEY }}
+          MAILER_LIST_ID: ${{ secrets.MAILER_LIST_ID }}
+          MAILER_FROM_EMAIL: ${{ secrets.MAILER_FROM_EMAIL }}
+          LLM_MODEL: ${{ secrets.LLM_MODEL }}
         run: python send_digest.py
